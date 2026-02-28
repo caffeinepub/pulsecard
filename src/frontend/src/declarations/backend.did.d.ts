@@ -86,6 +86,7 @@ export interface _SERVICE {
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getMedicalSummary' : ActorMethod<[string], [] | [MedicalSummary]>,
   'getProfile' : ActorMethod<[string], [] | [PatientProfile]>,
+  'getPublicRecordsByProfileId' : ActorMethod<[string], Array<MedicalRecord>>,
   'getRecordsByProfileId' : ActorMethod<[string], Array<MedicalRecord>>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'updateAiSummary' : ActorMethod<[string, string], undefined>,

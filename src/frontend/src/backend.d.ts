@@ -63,6 +63,7 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getMedicalSummary(profileId: string): Promise<MedicalSummary | null>;
     getProfile(profileId: string): Promise<PatientProfile | null>;
+    getPublicRecordsByProfileId(profileId: string): Promise<Array<MedicalRecord>>;
     getRecordsByProfileId(profileId: string): Promise<Array<MedicalRecord>>;
     isCallerAdmin(): Promise<boolean>;
     updateAiSummary(profileId: string, aiSummary: string): Promise<void>;

@@ -156,6 +156,7 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getMedicalSummary(profileId: string): Promise<MedicalSummary | null>;
     getProfile(profileId: string): Promise<PatientProfile | null>;
+    getPublicRecordsByProfileId(profileId: string): Promise<Array<MedicalRecord>>;
     getRecordsByProfileId(profileId: string): Promise<Array<MedicalRecord>>;
     isCallerAdmin(): Promise<boolean>;
     updateAiSummary(profileId: string, aiSummary: string): Promise<void>;
@@ -371,6 +372,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getProfile(arg0);
             return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getPublicRecordsByProfileId(arg0: string): Promise<Array<MedicalRecord>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPublicRecordsByProfileId(arg0);
+                return from_candid_vec_n19(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPublicRecordsByProfileId(arg0);
+            return from_candid_vec_n19(this._uploadFile, this._downloadFile, result);
         }
     }
     async getRecordsByProfileId(arg0: string): Promise<Array<MedicalRecord>> {

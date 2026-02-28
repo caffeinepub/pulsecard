@@ -201,6 +201,27 @@ actor {
     };
   };
 
+  // SECURITY NOTE: This function intentionally provides public access to medical records
+  // for emergency scenarios (QR code scanning by medical personnel).
+  // In a production system, consider:
+  // 1. Implementing time-limited access tokens
+  // 2. Audit logging of all access
+  // 3. Patient consent mechanisms
+  // 4. Returning only essential emergency information
+  // 5. Compliance with healthcare privacy regulations (HIPAA, GDPR, etc.)
+  public query ({ caller }) func getPublicRecordsByProfileId(profileId : Text) : async [MedicalRecord] {
+    // WARNING: This function exposes sensitive medical records without authentication.
+    // This is a significant privacy concern and should only be used in genuine
+    // emergency scenarios with appropriate legal safeguards.
+
+    switch (medicalRecords.get(profileId)) {
+      case (null) { [] };
+      case (?records) {
+        records.toArray().sort(MedicalRecord.compareByDate);
+      };
+    };
+  };
+
   public shared ({ caller }) func updateAiSummary(profileId : Text, aiSummary : Text) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only authenticated users can update AI summary");

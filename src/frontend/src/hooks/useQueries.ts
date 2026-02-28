@@ -5,14 +5,19 @@ import { useActor } from "./useActor";
 // ─── Profile ───────────────────────────────────────────────────────────────
 
 export function useGetProfile(profileId: string | null) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
+  // Only gate on actor existence — isFetching can flip true during re-fetches
+  // which would incorrectly disable queries that are already ready to run.
   return useQuery<PatientProfile | null>({
     queryKey: ["profile", profileId],
     queryFn: async () => {
       if (!actor || !profileId) return null;
-      return actor.getProfile(profileId);
+      const result = await actor.getProfile(profileId);
+      return result;
     },
-    enabled: !!actor && !isFetching && !!profileId,
+    enabled: !!actor && !!profileId,
+    retry: 3,
+    retryDelay: 1000,
   });
 }
 
@@ -38,28 +43,32 @@ export function useCreateOrUpdateProfile() {
 // ─── Medical Summary ───────────────────────────────────────────────────────
 
 export function useGetMedicalSummary(profileId: string | null) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<MedicalSummary | null>({
     queryKey: ["medicalSummary", profileId],
     queryFn: async () => {
       if (!actor || !profileId) return null;
       return actor.getMedicalSummary(profileId);
     },
-    enabled: !!actor && !isFetching && !!profileId,
+    enabled: !!actor && !!profileId,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 
 // ─── Medical Records ──────────────────────────────────────────────────────
 
 export function useGetRecords(profileId: string | null) {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   return useQuery<MedicalRecord[]>({
     queryKey: ["records", profileId],
     queryFn: async () => {
       if (!actor || !profileId) return [];
       return actor.getRecordsByProfileId(profileId);
     },
-    enabled: !!actor && !isFetching && !!profileId,
+    enabled: !!actor && !!profileId,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 
@@ -75,6 +84,20 @@ export function useAddMedicalRecord(profileId: string | null) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["records", profileId] });
     },
+  });
+}
+
+export function useGetPublicRecords(profileId: string | null) {
+  const { actor } = useActor();
+  return useQuery<MedicalRecord[]>({
+    queryKey: ["publicRecords", profileId],
+    queryFn: async () => {
+      if (!actor || !profileId) return [];
+      return actor.getPublicRecordsByProfileId(profileId);
+    },
+    enabled: !!actor && !!profileId,
+    retry: 2,
+    retryDelay: 1000,
   });
 }
 

@@ -43,6 +43,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { FileType, type MedicalRecord } from "../backend";
 import { ExternalBlob } from "../backend";
+import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddMedicalRecord,
@@ -51,6 +52,7 @@ import {
   useGetProfile,
   useGetRecords,
 } from "../hooks/useQueries";
+import { extractFileSummary } from "../utils/fileContentExtractor";
 import { generateUUID } from "../utils/uuid";
 
 const FILE_TYPE_CONFIG: Record<
@@ -120,7 +122,11 @@ function formatDate(uploadDate: bigint): string {
 
 export default function RecordsPage() {
   const { identity } = useInternetIdentity();
+  const { actor } = useActor();
   const profileId = identity?.getPrincipal().toString() ?? null;
+
+  // Actor is ready as soon as we have an actor instance
+  const isActorReady = !!actor;
 
   const { data: records, isLoading } = useGetRecords(profileId);
   const { data: existingProfile } = useGetProfile(profileId);
@@ -141,20 +147,37 @@ export default function RecordsPage() {
     fileType: FileType.pdf,
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isExtractingContent, setIsExtractingContent] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      // Auto-detect file type
-      if (file.type.startsWith("image/"))
-        setForm((f) => ({ ...f, fileType: FileType.image }));
-      else if (file.type === "application/pdf")
-        setForm((f) => ({ ...f, fileType: FileType.pdf }));
-      else if (file.type.startsWith("audio/"))
-        setForm((f) => ({ ...f, fileType: FileType.audio }));
-      else if (file.type.startsWith("video/"))
-        setForm((f) => ({ ...f, fileType: FileType.video }));
-      else setForm((f) => ({ ...f, fileType: FileType.other }));
+    if (!file) return;
+
+    setSelectedFile(file);
+
+    // Auto-detect file type
+    let detectedType = FileType.other;
+    if (file.type.startsWith("image/")) detectedType = FileType.image;
+    else if (file.type === "application/pdf") detectedType = FileType.pdf;
+    else if (file.type.startsWith("audio/")) detectedType = FileType.audio;
+    else if (file.type.startsWith("video/")) detectedType = FileType.video;
+
+    setForm((f) => ({ ...f, fileType: detectedType }));
+
+    // Auto-populate description with extracted content summary
+    setIsExtractingContent(true);
+    try {
+      const summary = await extractFileSummary(file);
+      setForm((f) => ({
+        ...f,
+        fileType: detectedType,
+        // Only fill if user hasn't already typed a custom description
+        description: f.description.trim() === "" ? summary : f.description,
+      }));
+    } catch {
+      // Silently ignore extraction errors
+    } finally {
+      setIsExtractingContent(false);
     }
   };
 
@@ -206,6 +229,7 @@ export default function RecordsPage() {
       setForm({ title: "", description: "", fileType: FileType.pdf });
       setSelectedFile(null);
       setUploadProgress(0);
+      setIsExtractingContent(false);
       setShowUploadForm(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch {
@@ -227,11 +251,12 @@ export default function RecordsPage() {
     setShowUploadForm(false);
     setSelectedFile(null);
     setUploadProgress(0);
+    setIsExtractingContent(false);
     setForm({ title: "", description: "", fileType: FileType.pdf });
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  if (isLoading) {
+  if (!isActorReady || isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Skeleton className="h-10 w-64 mb-8" />
@@ -347,21 +372,39 @@ export default function RecordsPage() {
               </div>
 
               <div>
-                <Label
-                  htmlFor="rec-desc"
-                  className="text-xs font-medium text-muted-foreground mb-1.5 block"
-                >
-                  Description
-                </Label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label
+                    htmlFor="rec-desc"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    Summary / Description
+                  </Label>
+                  {isExtractingContent && (
+                    <span className="flex items-center gap-1 text-[10px] text-primary">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Reading file…
+                    </span>
+                  )}
+                  {!isExtractingContent && selectedFile && form.description && (
+                    <span className="text-[10px] text-emerald-600 font-medium">
+                      Auto-filled from file
+                    </span>
+                  )}
+                </div>
                 <Textarea
                   id="rec-desc"
                   value={form.description}
                   onChange={(e) =>
                     setForm({ ...form, description: e.target.value })
                   }
-                  placeholder="Describe what this record contains..."
-                  rows={2}
+                  placeholder={
+                    isExtractingContent
+                      ? "Extracting content from file…"
+                      : "Describe what this record contains…"
+                  }
+                  rows={3}
                   className="resize-none"
+                  disabled={isExtractingContent}
                 />
               </div>
 

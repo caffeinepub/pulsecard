@@ -105,6 +105,11 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getProfile' : IDL.Func([IDL.Text], [IDL.Opt(PatientProfile)], ['query']),
+  'getPublicRecordsByProfileId' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(MedicalRecord)],
+      ['query'],
+    ),
   'getRecordsByProfileId' : IDL.Func(
       [IDL.Text],
       [IDL.Vec(MedicalRecord)],
@@ -214,6 +219,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getProfile' : IDL.Func([IDL.Text], [IDL.Opt(PatientProfile)], ['query']),
+    'getPublicRecordsByProfileId' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(MedicalRecord)],
+        ['query'],
+      ),
     'getRecordsByProfileId' : IDL.Func(
         [IDL.Text],
         [IDL.Vec(MedicalRecord)],

@@ -1,9 +1,15 @@
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useParams } from "@tanstack/react-router";
 import {
   Activity,
   AlertTriangle,
+  File,
+  FileAudio,
+  FileImage,
+  FileText,
+  FileVideo,
   Heart,
   Info,
   Loader2,
@@ -14,8 +20,10 @@ import {
   User,
 } from "lucide-react";
 import { motion } from "motion/react";
+import type { MedicalRecord } from "../backend";
+import { FileType } from "../backend";
 import QRCodeDisplay from "../components/QRCodeDisplay";
-import { useGetMedicalSummary } from "../hooks/useQueries";
+import { useGetMedicalSummary, useGetPublicRecords } from "../hooks/useQueries";
 
 const BLOOD_TYPE_COLORS: Record<string, { bg: string; ring: string }> = {
   "A+": { bg: "bg-red-600 text-white", ring: "ring-red-300" },
@@ -28,6 +36,84 @@ const BLOOD_TYPE_COLORS: Record<string, { bg: string; ring: string }> = {
   "O-": { bg: "bg-blue-800 text-white", ring: "ring-blue-400" },
 };
 
+const FILE_TYPE_CONFIG: Record<
+  FileType,
+  { label: string; badgeCls: string; Icon: React.ElementType }
+> = {
+  [FileType.pdf]: {
+    label: "PDF",
+    badgeCls: "bg-red-50 text-red-700 border-red-200",
+    Icon: FileText,
+  },
+  [FileType.image]: {
+    label: "Image",
+    badgeCls: "bg-blue-50 text-blue-700 border-blue-200",
+    Icon: FileImage,
+  },
+  [FileType.audio]: {
+    label: "Audio",
+    badgeCls: "bg-violet-50 text-violet-700 border-violet-200",
+    Icon: FileAudio,
+  },
+  [FileType.video]: {
+    label: "Video",
+    badgeCls: "bg-amber-50 text-amber-700 border-amber-200",
+    Icon: FileVideo,
+  },
+  [FileType.other]: {
+    label: "File",
+    badgeCls: "bg-slate-50 text-slate-700 border-slate-200",
+    Icon: File,
+  },
+};
+
+function formatUploadDate(uploadDate: bigint): string {
+  const ms = Number(uploadDate) / 1_000_000;
+  return new Date(ms).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function RecordCard({ record }: { record: MedicalRecord }) {
+  const typeConfig =
+    FILE_TYPE_CONFIG[record.fileType] ?? FILE_TYPE_CONFIG[FileType.other];
+  const { label, badgeCls, Icon } = typeConfig;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="clinical-card rounded-2xl p-4 flex items-start gap-4"
+    >
+      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <Icon className="w-5 h-5 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <p className="font-semibold text-navy text-sm leading-snug">
+            {record.title}
+          </p>
+          <Badge
+            className={`${badgeCls} border text-xs font-semibold flex-shrink-0`}
+          >
+            {label}
+          </Badge>
+        </div>
+        {record.description && (
+          <p className="text-muted-foreground text-xs leading-relaxed line-clamp-3">
+            {record.description}
+          </p>
+        )}
+        <p className="text-muted-foreground/60 text-xs mt-1.5">
+          {formatUploadDate(record.uploadDate)}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function PublicProfilePage() {
   const { profileId } = useParams({ from: "/patient/$profileId" });
   const {
@@ -35,6 +121,10 @@ export default function PublicProfilePage() {
     isLoading,
     error,
   } = useGetMedicalSummary(profileId ?? null);
+
+  const { data: records = [], isLoading: recordsLoading } = useGetPublicRecords(
+    profileId ?? null,
+  );
 
   const qrUrl = profileId
     ? `${window.location.origin}/patient/${profileId}`
@@ -133,15 +223,22 @@ export default function PublicProfilePage() {
 
       <div className="container mx-auto max-w-2xl px-4 py-6">
         <Tabs defaultValue="emergency" className="space-y-5">
-          <TabsList className="w-full grid grid-cols-2 h-11">
+          <TabsList className="w-full grid grid-cols-3 h-11">
             <TabsTrigger
               value="emergency"
-              className="gap-2 text-sm font-medium"
+              className="gap-1.5 text-xs font-medium"
             >
               <Heart className="w-3.5 h-3.5" />
               Emergency Info
             </TabsTrigger>
-            <TabsTrigger value="qr" className="gap-2 text-sm font-medium">
+            <TabsTrigger
+              value="records"
+              className="gap-1.5 text-xs font-medium"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Records
+            </TabsTrigger>
+            <TabsTrigger value="qr" className="gap-1.5 text-xs font-medium">
               <QrCode className="w-3.5 h-3.5" />
               QR Code
             </TabsTrigger>
@@ -299,8 +396,67 @@ export default function PublicProfilePage() {
             <div className="flex items-start gap-2 text-xs text-muted-foreground bg-secondary/80 rounded-xl p-3.5 border border-border">
               <Pill className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-muted-foreground/60" />
               <p>
-                Emergency summary only. Full records including medications
-                require patient authorization. Powered by{" "}
+                Emergency summary and records provided by{" "}
+                <strong className="text-foreground">PulseCard</strong>.
+              </p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="records" className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="clinical-card rounded-2xl p-5"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FileText className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <h2 className="font-display font-bold text-base text-navy">
+                  Medical Records
+                </h2>
+                {!recordsLoading && records.length > 0 && (
+                  <Badge className="bg-primary/10 text-primary border-primary/20 text-xs ml-auto">
+                    {records.length} file{records.length !== 1 ? "s" : ""}
+                  </Badge>
+                )}
+              </div>
+
+              {recordsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-start gap-4">
+                      <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-3 w-1/4" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : records.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-3">
+                    <FileText className="w-6 h-6 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-muted-foreground text-sm">
+                    No medical records on file.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {records.map((record) => (
+                    <RecordCard key={record.id} record={record} />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+
+            <div className="flex items-start gap-2 text-xs text-muted-foreground bg-secondary/80 rounded-xl p-3.5 border border-border">
+              <Pill className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-muted-foreground/60" />
+              <p>
+                Emergency summary and records provided by{" "}
                 <strong className="text-foreground">PulseCard</strong>.
               </p>
             </div>

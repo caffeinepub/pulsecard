@@ -24,11 +24,12 @@ import {
   User,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { PatientProfile } from "../backend";
 import QRCodeDisplay from "../components/QRCodeDisplay";
 import TagInput from "../components/TagInput";
+import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useCreateOrUpdateProfile, useGetProfile } from "../hooks/useQueries";
 
@@ -57,28 +58,64 @@ const emptyProfile = (profileId: string): PatientProfile => ({
   aiSummary: "",
 });
 
+function ProfileSkeleton() {
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid md:grid-cols-2 gap-6">
+          <Skeleton className="h-64 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
+        </div>
+        <Skeleton className="h-48 rounded-2xl" />
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { identity } = useInternetIdentity();
+  const { actor } = useActor();
   const profileId = identity?.getPrincipal().toString() ?? null;
 
-  const { data: profile, isLoading, isFetched } = useGetProfile(profileId);
+  // Actor is ready as soon as we have an actor instance
+  const isActorReady = !!actor;
+
+  const {
+    data: profile,
+    isLoading,
+    isFetched,
+    isError,
+  } = useGetProfile(profileId);
   const { mutateAsync: saveProfile, isPending: isSaving } =
     useCreateOrUpdateProfile();
 
   const [form, setForm] = useState<PatientProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  // Track whether we've already initialized the form to avoid resetting on
+  // background re-fetches (e.g. after the actor invalidates queries).
+  const formInitialized = useRef(false);
 
-  // Initialize form when profile loads
+  // Initialize form when profile loads — runs whenever the query resolves
   useEffect(() => {
-    if (isFetched && profileId) {
+    // Only initialise once the actor is ready and the query has completed
+    if (!isActorReady || !profileId) return;
+    if (isFetched) {
       if (profile) {
-        setForm(profile);
-      } else {
+        // Always sync form from profile on first load; after that only if not editing
+        if (!formInitialized.current || !isEditing) {
+          setForm(profile);
+          setIsEditing(false);
+          formInitialized.current = true;
+        }
+      } else if (!formInitialized.current) {
+        // New user — pre-fill empty form and enter edit mode (only once)
         setForm(emptyProfile(profileId));
-        setIsEditing(true); // Show setup form
+        setIsEditing(true);
+        formInitialized.current = true;
       }
     }
-  }, [profile, isFetched, profileId]);
+  }, [profile, isFetched, profileId, isActorReady, isEditing]);
 
   const handleSave = async () => {
     if (!form) return;
@@ -97,34 +134,39 @@ export default function ProfilePage() {
     toast.success("Profile link copied!");
   };
 
-  if (isLoading || !isFetched) {
+  // Show skeleton while actor is initializing or the profile query is in-flight
+  if (!isActorReady || isLoading) {
+    return <ProfileSkeleton />;
+  }
+
+  // If there was an error and the form is still null, show the empty setup form
+  // so the user can still create their profile rather than seeing a stuck screen.
+  if (!form && isError && profileId) {
+    // Side-effect-free: initialize directly so user can still use the page
+    const fallback = emptyProfile(profileId);
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="space-y-6">
-          <Skeleton className="h-10 w-64" />
-          <div className="grid md:grid-cols-2 gap-6">
-            <Skeleton className="h-64 rounded-2xl" />
-            <Skeleton className="h-64 rounded-2xl" />
-          </div>
-          <Skeleton className="h-48 rounded-2xl" />
+        <div className="clinical-card rounded-2xl p-8 text-center space-y-3">
+          <AlertCircle className="w-10 h-10 text-destructive mx-auto" />
+          <h2 className="font-display font-bold text-xl text-navy">
+            Could not load profile
+          </h2>
+          <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+            There was a problem fetching your profile data. Please refresh the
+            page or try again.
+          </p>
+          <Button onClick={() => setForm(fallback)} className="gap-2 mt-2">
+            <User className="w-4 h-4" />
+            Set Up New Profile
+          </Button>
         </div>
       </div>
     );
   }
 
+  // Give effect one render cycle to initialise form after isFetched flips true
   if (!form) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="space-y-6">
-          <Skeleton className="h-10 w-64" />
-          <div className="grid md:grid-cols-2 gap-6">
-            <Skeleton className="h-64 rounded-2xl" />
-            <Skeleton className="h-64 rounded-2xl" />
-          </div>
-          <Skeleton className="h-48 rounded-2xl" />
-        </div>
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   const isNewProfile = !profile;
