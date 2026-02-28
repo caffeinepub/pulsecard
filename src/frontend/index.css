@@ -1,0 +1,215 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* PulseCard — Sora (body) + Cabinet Grotesk (display) */
+@font-face {
+  font-family: "Sora";
+  src: url("/assets/fonts/Sora.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/assets/fonts/CabinetGrotesk-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* PulseCard Blue & White Palette */
+    /* Navy blue primary, white background, clinical precision */
+    --background: 0.98 0.004 220;
+    --foreground: 0.18 0.06 250;
+
+    --card: 1 0 0;
+    --card-foreground: 0.18 0.06 250;
+
+    --popover: 1 0 0;
+    --popover-foreground: 0.18 0.06 250;
+
+    /* Deep navy blue primary */
+    --primary: 0.32 0.14 255;
+    --primary-foreground: 0.99 0 0;
+
+    /* Light steel blue secondary */
+    --secondary: 0.94 0.025 220;
+    --secondary-foreground: 0.25 0.10 250;
+
+    --muted: 0.94 0.015 220;
+    --muted-foreground: 0.52 0.04 230;
+
+    /* Bright medical blue accent */
+    --accent: 0.58 0.22 255;
+    --accent-foreground: 0.99 0 0;
+
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.99 0 0;
+
+    --border: 0.88 0.025 220;
+    --input: 0.88 0.03 220;
+    --ring: 0.44 0.16 255;
+
+    /* Success green for medical vitals */
+    --success: 0.57 0.18 145;
+    --success-foreground: 0.99 0 0;
+
+    /* Warning amber for alerts */
+    --warning: 0.72 0.19 70;
+    --warning-foreground: 0.15 0.04 50;
+
+    --chart-1: 0.52 0.22 260;
+    --chart-2: 0.62 0.18 200;
+    --chart-3: 0.55 0.16 140;
+    --chart-4: 0.72 0.19 70;
+    --chart-5: 0.58 0.22 30;
+
+    --sidebar: 0.20 0.09 252;
+    --sidebar-foreground: 0.95 0.01 220;
+    --sidebar-primary: 0.58 0.22 255;
+    --sidebar-primary-foreground: 0.99 0 0;
+    --sidebar-accent: 0.28 0.11 252;
+    --sidebar-accent-foreground: 0.95 0.01 220;
+    --sidebar-border: 0.30 0.09 255;
+    --sidebar-ring: 0.58 0.22 255;
+
+    /* Pulse animation color */
+    --pulse-blue: 0.58 0.22 255;
+    --deep-navy: 0.20 0.09 252;
+    --medical-cyan: 0.72 0.14 200;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Sora", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Cabinet Grotesk", sans-serif;
+  }
+
+  .font-body {
+    font-family: "Sora", sans-serif;
+  }
+
+  /* Medical badge pulse animation */
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 oklch(0.58 0.22 255 / 0.4); }
+    70% { box-shadow: 0 0 0 10px oklch(0.58 0.22 255 / 0); }
+    100% { box-shadow: 0 0 0 0 oklch(0.58 0.22 255 / 0); }
+  }
+
+  @keyframes ecg-draw {
+    from { stroke-dashoffset: 400; }
+    to { stroke-dashoffset: 0; }
+  }
+
+  .pulse-badge {
+    animation: pulse-ring 2s ease-out infinite;
+  }
+
+  .blood-type-badge {
+    font-family: "Cabinet Grotesk", sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  /* Hero gradient mesh */
+  .hero-mesh {
+    background:
+      radial-gradient(ellipse 80% 60% at 50% -20%, oklch(0.35 0.16 255 / 0.4), transparent),
+      radial-gradient(ellipse 60% 80% at 90% 80%, oklch(0.28 0.12 240 / 0.3), transparent),
+      oklch(0.20 0.09 252);
+  }
+
+  /* Clinical card */
+  .clinical-card {
+    background: oklch(1 0 0);
+    border: 1px solid oklch(0.88 0.025 220);
+    box-shadow: 0 2px 8px oklch(0.25 0.10 255 / 0.08), 0 1px 2px oklch(0.25 0.10 255 / 0.04);
+  }
+
+  /* Emergency card */
+  .emergency-card {
+    background: oklch(1 0 0);
+    border: 2px solid oklch(0.58 0.22 27);
+    box-shadow: 0 4px 16px oklch(0.58 0.22 27 / 0.15);
+  }
+
+  /* Glass effect for overlays */
+  .glass-panel {
+    background: oklch(1 0 0 / 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid oklch(0.88 0.03 220 / 0.8);
+  }
+
+  /* Feature card: AI variant — deep blue tint with noise-like gradient */
+  .feature-card-ai {
+    background:
+      radial-gradient(ellipse 120% 80% at 0% 100%, oklch(0.58 0.22 255 / 0.06), transparent),
+      oklch(0.97 0.012 240);
+    border: 1px solid oklch(0.58 0.22 255 / 0.18);
+    box-shadow: 0 4px 24px oklch(0.32 0.14 255 / 0.10), 0 1px 3px oklch(0.32 0.14 255 / 0.06);
+  }
+
+  /* Feature card: QR variant — action-ready, warm-white with navy accent */
+  .feature-card-qr {
+    background: oklch(1 0 0);
+    border: 1px solid oklch(0.88 0.025 220);
+    box-shadow: 0 4px 24px oklch(0.25 0.10 255 / 0.10), 0 1px 3px oklch(0.25 0.10 255 / 0.04);
+  }
+
+  /* AI summary elevated panel */
+  .ai-summary-panel {
+    background: linear-gradient(135deg, oklch(0.22 0.10 252), oklch(0.28 0.12 255));
+    border: 1px solid oklch(0.38 0.16 255 / 0.5);
+    box-shadow: 0 4px 20px oklch(0.22 0.10 252 / 0.3);
+  }
+
+  /* QR code emergency panel */
+  .qr-emergency-panel {
+    background: oklch(1 0 0);
+    border: 2px solid oklch(0.32 0.14 255);
+    box-shadow: 0 2px 12px oklch(0.32 0.14 255 / 0.15);
+  }
+
+  /* Record item left accent via data attribute */
+  .record-item-pdf    { border-left: 3px solid oklch(0.55 0.20 27); }
+  .record-item-image  { border-left: 3px solid oklch(0.52 0.18 290); }
+  .record-item-audio  { border-left: 3px solid oklch(0.55 0.16 145); }
+  .record-item-video  { border-left: 3px solid oklch(0.52 0.18 250); }
+  .record-item-other  { border-left: 3px solid oklch(0.60 0.00 0); }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: oklch(0.94 0.015 220);
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.68 0.08 230);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.44 0.14 255);
+}
